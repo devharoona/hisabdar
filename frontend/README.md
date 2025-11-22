@@ -1,20 +1,66 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Hisabdar Frontend
 
-# Run and deploy your AI Studio app
+React + TypeScript + Vite frontend for Hisabdar accounting application.
 
-This contains everything you need to run your app locally.
+## Features
 
-View your app in AI Studio: https://ai.studio/apps/drive/1HUZm2cmNhAu7Zj4k17lkoUh-3Vzk69mk
+- 🔐 User authentication (login/register)
+- 👥 Customer management
+- 📄 Invoice creation and tracking
+- 💰 Expense management
+- 📊 Dashboard with analytics
+- 📈 Reports and insights
+- 🤖 AI-powered payment reminders (Gemini)
+- 🖨️ Print/PDF invoice generation
+- ✅ Bulk operations with checkboxes
 
-## Run Locally
+## Prerequisites
 
-**Prerequisites:**  Node.js
+- Node.js (v16 or higher)
+- Backend server running on `http://localhost:3000`
 
+## Setup
 
 1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+   ```bash
+   npm install
+   ```
+
+2. Set the `GEMINI_API_KEY` in `.env.local`:
+   ```
+   GEMINI_API_KEY=your_api_key_here
+   ```
+
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+4. Open http://localhost:5173
+
+## Build for Production
+
+```bash
+npm run build
+npm run preview
+```
+
+## Tech Stack
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS (via inline styles)
+- Lucide React (icons)
+- Google Gemini AI
+- Recharts (analytics)
+
+## API Integration
+
+The frontend connects to the backend API at `http://localhost:3000/api`:
+
+- `/auth/login` - User authentication
+- `/auth/register` - User registration
+- `/customers` - Customer CRUD
+- `/invoices` - Invoice CRUD
+- `/expenses` - Expense CRUD

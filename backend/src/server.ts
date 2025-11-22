@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { authRouter } from './routes/auth.js';
 import { customersRouter } from './routes/customers.js';
 import { invoicesRouter } from './routes/invoices.js';
 import { expensesRouter } from './routes/expenses.js';
@@ -14,6 +15,7 @@ app.get('/', (req, res) => {
   res.json({ status: 'ok', message: 'Hisabdar API running' });
 });
 
+app.use('/api/auth', authRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/expenses', expensesRouter);

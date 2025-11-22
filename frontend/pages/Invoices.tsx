@@ -13,6 +13,7 @@ interface InvoicesProps {
 const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus, onDeleteInvoice }) => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   
   // AI Reminder State
   const [reminderModalOpen, setReminderModalOpen] = useState(false);
@@ -26,6 +27,7 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
     date: new Date().toISOString().split('T')[0],
     dueDate: '',
     items: [] as InvoiceItem[],
+    notes: ''
   });
   const [currentItem, setCurrentItem] = useState({ desc: '', amount: '' });
 
@@ -77,11 +79,12 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
       dueDate: newInv.dueDate || newInv.date,
       items: finalItems,
       totalAmount: total,
-      status: InvoiceStatus.PENDING
+      status: InvoiceStatus.PENDING,
+      notes: newInv.notes || undefined
     });
     
     setIsCreateOpen(false);
-    setNewInv({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [] });
+    setNewInv({ customerId: '', date: new Date().toISOString().split('T')[0], dueDate: '', items: [], notes: '' });
     setCurrentItem({ desc: '', amount: '' });
   };
 
@@ -112,13 +115,29 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
           <h2 className="text-2xl font-bold text-stone-100">Invoices</h2>
           <p className="text-stone-400">Create and track payments.</p>
         </div>
-        <button 
-          onClick={() => setIsCreateOpen(true)}
-          className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-amber-900/20 transition-all"
-        >
-          <Plus size={18} />
-          New Invoice
-        </button>
+        <div className="flex gap-2">
+          {selectedRows.size > 0 && (
+            <button 
+              onClick={() => {
+                if (window.confirm(`Delete ${selectedRows.size} invoice(s)?`)) {
+                  selectedRows.forEach(id => onDeleteInvoice(id));
+                  setSelectedRows(new Set());
+                }
+              }}
+              className="bg-rose-600 hover:bg-rose-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg transition-all"
+            >
+              <Trash2 size={18} />
+              Delete ({selectedRows.size})
+            </button>
+          )}
+          <button 
+            onClick={() => setIsCreateOpen(true)}
+            className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 shadow-lg shadow-amber-900/20 transition-all"
+          >
+            <Plus size={18} />
+            New Invoice
+          </button>
+        </div>
       </div>
 
       {/* Invoice List */}
@@ -127,6 +146,20 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
           <table className="w-full text-left text-sm">
             <thead className="bg-stone-950 text-stone-400 border-b border-stone-800">
               <tr>
+                <th className="p-4 font-medium w-8">
+                  <input
+                    type="checkbox"
+                    checked={selectedRows.size === data.invoices.length && data.invoices.length > 0}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedRows(new Set(data.invoices.map(inv => inv.id)));
+                      } else {
+                        setSelectedRows(new Set());
+                      }
+                    }}
+                    className="rounded border-stone-600 bg-stone-800 text-amber-600 focus:ring-amber-500"
+                  />
+                </th>
                 <th className="p-4 font-medium">Customer</th>
                 <th className="p-4 font-medium">Date</th>
                 <th className="p-4 font-medium">Due Date</th>
@@ -138,6 +171,22 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
             <tbody className="divide-y divide-stone-800">
               {data.invoices.map(inv => (
                 <tr key={inv.id} className="hover:bg-stone-800/50 transition-colors group">
+                  <td className="p-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.has(inv.id)}
+                      onChange={(e) => {
+                        const newSelected = new Set(selectedRows);
+                        if (e.target.checked) {
+                          newSelected.add(inv.id);
+                        } else {
+                          newSelected.delete(inv.id);
+                        }
+                        setSelectedRows(newSelected);
+                      }}
+                      className="rounded border-stone-600 bg-stone-800 text-amber-600 focus:ring-amber-500"
+                    />
+                  </td>
                   <td className="p-4 font-medium text-stone-100">{inv.customerName}</td>
                   <td className="p-4 text-stone-400">{inv.date}</td>
                   <td className="p-4 text-stone-400">{inv.dueDate}</td>
@@ -153,16 +202,6 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex justify-end gap-2">
-                      <button 
-                          title="Delete Invoice"
-                          onClick={(e) => {
-                              e.stopPropagation();
-                              onDeleteInvoice(inv.id);
-                          }}
-                          className="p-1.5 text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                        >
-                          <Trash2 size={18} />
-                      </button>
                       {inv.status !== InvoiceStatus.PAID && (
                         <>
                           <button 
@@ -203,7 +242,7 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
               ))}
               {data.invoices.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-stone-500">No invoices found.</td>
+                  <td colSpan={7} className="p-8 text-center text-stone-500">No invoices found.</td>
                 </tr>
               )}
             </tbody>
@@ -315,6 +354,17 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-stone-300 mb-1">Notes (Optional)</label>
+                <textarea
+                  className="w-full p-2 bg-stone-950 border border-stone-700 rounded-lg text-white focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+                  rows={2}
+                  placeholder="Add any additional notes..."
+                  value={newInv.notes}
+                  onChange={(e) => setNewInv({...newInv, notes: e.target.value})}
+                />
+              </div>
+
               <div className="flex justify-end text-xl font-bold text-stone-100">
                 Total: ₹{(newInv.items.reduce((sum, i) => sum + i.amount, 0) + (currentItem.amount ? parseFloat(currentItem.amount) || 0 : 0)).toFixed(2)}
                 {currentItem.amount && <span className="text-xs font-normal text-stone-400 ml-2 self-center">(including pending item)</span>}
@@ -382,60 +432,124 @@ const Invoices: React.FC<InvoicesProps> = ({ data, onAddInvoice, onUpdateStatus,
         </div>
       )}
 
-      {/* Hidden Print Template */}
-      <div className="hidden print-only p-8 max-w-3xl mx-auto bg-white text-black">
-        {selectedInvoice && (
-          <div>
-            <div className="flex justify-between items-center border-b border-gray-200 pb-8 mb-8">
-               <h1 className="text-4xl font-bold text-gray-900">INVOICE</h1>
-               <div className="text-right">
-                 <h2 className="text-xl font-bold text-gray-800">Hisabdar</h2>
-                 <p className="text-sm text-gray-500">Business Invoice</p>
-               </div>
-            </div>
-            <div className="flex justify-between mb-8">
-               <div>
-                 <p className="text-sm text-gray-500 font-medium mb-1">Bill To:</p>
-                 <p className="text-lg font-bold text-gray-900">{selectedInvoice.customerName}</p>
-               </div>
-               <div className="text-right">
-                 <div className="mb-2">
-                   <span className="text-sm text-gray-500">Invoice #:</span>
-                   <span className="font-medium ml-2 text-gray-900">{selectedInvoice.id.toUpperCase()}</span>
-                 </div>
-                 <div className="mb-2">
-                   <span className="text-sm text-gray-500">Date:</span>
-                   <span className="font-medium ml-2 text-gray-900">{selectedInvoice.date}</span>
-                 </div>
-               </div>
-            </div>
-            <table className="w-full mb-8 border-collapse">
-              <thead className="bg-gray-50">
-                <tr>
-                   <th className="py-3 px-4 text-left text-sm font-semibold text-gray-900 border-b border-gray-200">Description</th>
-                   <th className="py-3 px-4 text-right text-sm font-semibold text-gray-900 border-b border-gray-200">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {selectedInvoice.items.map((item, i) => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="py-3 px-4 text-sm text-gray-700">{item.description}</td>
-                    <td className="py-3 px-4 text-right text-sm text-gray-900">₹{item.amount.toFixed(2)}</td>
+      {/* Print Template */}
+      {selectedInvoice && (() => {
+        const customer = data.customers.find(c => c.id === selectedInvoice.customerId);
+        return (
+          <div style={{ display: 'none' }} className="print-only">
+            <div style={{ 
+              backgroundColor: 'white', 
+              color: 'black', 
+              padding: '40px',
+              maxWidth: '800px',
+              margin: '0 auto',
+              fontFamily: 'Arial, sans-serif'
+            }}>
+              {/* Header */}
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '30px',
+                paddingBottom: '20px',
+                borderBottom: '3px solid #333'
+              }}>
+                <div>
+                  <h1 style={{ fontSize: '48px', fontWeight: 'bold', margin: '0 0 10px 0' }}>INVOICE</h1>
+                  <p style={{ fontSize: '14px', color: '#666', margin: 0 }}>#{selectedInvoice.id.toUpperCase()}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <h2 style={{ fontSize: '24px', fontWeight: 'bold', margin: '0 0 5px 0' }}>Hisabdar</h2>
+                  <p style={{ fontSize: '12px', color: '#666', margin: 0 }}>Business Accounting</p>
+                </div>
+              </div>
+
+              {/* Bill To & Invoice Details */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '30px' }}>
+                <div>
+                  <h3 style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: '10px' }}>Bill To:</h3>
+                  <div style={{ backgroundColor: '#f5f5f5', padding: '15px', borderRadius: '5px' }}>
+                    <p style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{selectedInvoice.customerName}</p>
+                    {customer && (
+                      <div style={{ fontSize: '13px', color: '#333' }}>
+                        <p style={{ margin: '5px 0' }}><strong>Phone:</strong> {customer.phone}</p>
+                        <p style={{ margin: '5px 0' }}><strong>Email:</strong> {customer.email}</p>
+                        <p style={{ margin: '5px 0' }}><strong>Address:</strong> {customer.address}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: '10px' }}>Invoice Details:</h3>
+                  <div style={{ backgroundColor: '#f5f5f5', padding: '15px', borderRadius: '5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#666' }}>Invoice Date:</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{selectedInvoice.date}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: '#666' }}>Due Date:</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold' }}>{selectedInvoice.dueDate}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ fontSize: '13px', color: '#666' }}>Status:</span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        fontWeight: 'bold',
+                        color: selectedInvoice.status === 'Paid' ? '#16a34a' : selectedInvoice.status === 'Overdue' ? '#dc2626' : '#d97706'
+                      }}>{selectedInvoice.status}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Items Table */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
+                <thead>
+                  <tr style={{ backgroundColor: '#333', color: 'white' }}>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: 'bold' }}>#</th>
+                    <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: 'bold' }}>Description</th>
+                    <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: 'bold' }}>Amount</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className="flex justify-end">
-               <div className="w-64 border-t border-gray-200 pt-4">
-                 <div className="flex justify-between items-center">
-                    <span className="text-xl font-bold text-gray-900">Total</span>
-                    <span className="text-xl font-bold text-blue-600">₹{selectedInvoice.totalAmount.toFixed(2)}</span>
-                 </div>
-               </div>
+                </thead>
+                <tbody>
+                  {selectedInvoice.items.map((item, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid #ddd' }}>
+                      <td style={{ padding: '12px', fontSize: '13px', color: '#666' }}>{i + 1}</td>
+                      <td style={{ padding: '12px', fontSize: '13px' }}>{item.description}</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '500' }}>₹{item.amount.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Total */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '30px' }}>
+                <div style={{ width: '300px' }}>
+                  <div style={{ backgroundColor: '#333', color: 'white', padding: '15px', borderRadius: '5px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '18px', fontWeight: 'bold' }}>TOTAL AMOUNT</span>
+                      <span style={{ fontSize: '24px', fontWeight: 'bold' }}>₹{selectedInvoice.totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedInvoice.notes && (
+                <div style={{ marginBottom: '30px', padding: '15px', backgroundColor: '#f5f5f5', borderRadius: '5px' }}>
+                  <h3 style={{ fontSize: '11px', fontWeight: 'bold', color: '#666', textTransform: 'uppercase', marginBottom: '8px' }}>Notes:</h3>
+                  <p style={{ fontSize: '13px', color: '#333', margin: 0 }}>{selectedInvoice.notes}</p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div style={{ paddingTop: '20px', borderTop: '1px solid #ddd', textAlign: 'center' }}>
+                <p style={{ fontSize: '12px', color: '#666', margin: '0 0 5px 0' }}>Thank you for your business!</p>
+                <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>Generated by Hisabdar - Business Accounting System</p>
+              </div>
             </div>
           </div>
-        )}
-      </div>
+        );
+      })()}
     </div>
   );
 };

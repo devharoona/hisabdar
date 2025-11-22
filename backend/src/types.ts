@@ -38,6 +38,12 @@ export interface Expense {
   category: 'Fuel' | 'Maintenance' | 'Rent' | 'Supplies' | 'Other';
 }
 
+export interface User {
+  id: string;
+  businessName: string;
+  password: string;
+}
+
 export interface AppData {
   customers: Customer[];
   invoices: Invoice[];
