@@ -1,0 +1,1 @@
+{"root":["./src/server.ts","./src/store.ts","./src/types.ts","./src/routes/customers.ts","./src/routes/expenses.ts","./src/routes/invoices.ts"],"version":"5.9.3"}
