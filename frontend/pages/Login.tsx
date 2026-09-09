@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { IndianRupee } from 'lucide-react';
+import { API_URL } from '../services/apiConfig';
 
 interface LoginProps {
   onLogin: (businessName: string, token: string) => void;
@@ -14,8 +15,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     password: ''
   });
   const [error, setError] = useState('');
-
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,8 +40,8 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       }
 
       onLogin(data.businessName, data.token);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +102,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <input
               type="password"
               required
-              minLength={6}
+                minLength={12}
               className="w-full p-3 bg-stone-950 border border-stone-700 rounded-lg text-white focus:ring-2 focus:ring-amber-500 outline-none"
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}

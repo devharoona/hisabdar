@@ -1,79 +1,75 @@
-# Hisabdar - Business Ledger & Accounting App
+# Hisabdar
 
-MERN stack accounting application for small businesses.
+Business ledger and accounting application for small businesses.
 
-## Tech Stack
+## Architecture
 
-- **MongoDB** - Database
-- **Express** - Backend API
-- **React** - Frontend UI
-- **Node.js** - Runtime
-
-## Project Structure
-
-```
-hisabdar/
-├── frontend/          # React + TypeScript + Vite
-├── backend/           # Express + MongoDB + JWT Auth
-└── README.md
+```text
+Browser
+  │
+  ├── Vite + React static frontend (Vercel)
+  │       │ relative /api requests
+  │
+  └── Node.js serverless API (Vercel /api/[...path])
+          │
+          └── MongoDB Atlas
 ```
 
-## Quick Start
+The frontend and API share the same Vercel origin in production. API requests therefore use `/api` and do not expose database or AI credentials to the browser.
 
-### Prerequisites
-- Node.js 16+
-- MongoDB (local or Atlas)
+## Environment variables
 
-### Setup
+Set these in Vercel Project Settings → Environment Variables. Do not commit their values.
 
-**1. Install MongoDB:**
-- Local: https://www.mongodb.com/try/download/community
-- Cloud: https://www.mongodb.com/cloud/atlas (free tier)
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MONGO_URI` | Yes | MongoDB Atlas connection string. Allow Vercel network access in Atlas. |
+| `JWT_SECRET` | Yes | Random secret with at least 32 characters. |
+| `GEMINI_API_KEY` | No | Enables server-side AI reminders and insights. |
+| `CORS_ORIGIN` | Local/separate origin only | Comma-separated browser origins allowed to call the API. Same-origin Vercel use does not need it. |
+| `TRUST_PROXY` | Optional | Set `true` only when running behind a trusted reverse proxy. |
 
-**2. Backend:**
+Use distinct Atlas databases and JWT secrets for Preview and Production. Vercel Firewall should provide production edge rate limiting; the API's login limiter is instance-local and is only a secondary safeguard.
+
+## Run locally
+
+Prerequisite: Node.js 18.17+ and a MongoDB instance (Atlas or local).
+
 ```bash
-cd backend
-npm install
-# Edit .env with your MongoDB URI
-npm start
+npm install --prefix backend
+cd frontend && npm install && npm run dev
 ```
 
-**3. Frontend:**
+In a second terminal, start the API:
+
 ```bash
-cd frontend
-npm install
-npm run dev
+API_PORT=4000 MONGO_URI="mongodb+srv://..." JWT_SECRET="a-random-secret-with-at-least-32-characters" node api/local-server.js
 ```
 
-**4. Open:** http://localhost:3000
+The frontend defaults to `http://localhost:4000/api`. To use another API origin locally, create `frontend/.env.local` with `VITE_API_URL=http://localhost:4000/api`.
 
-## Features
+## Deploy to Vercel
 
-- 🔐 JWT Authentication
-- 👥 Customer Management (Hisab Books)
-- 📄 Invoice Creation & Tracking
-- 💰 Payment Recording (Jama)
-- 💸 Expense Tracking
-- 📊 Financial Reports
-- 📱 WhatsApp Reminders
-- 🖨️ Print/PDF Export
-- 💾 Backup/Restore
-- 🌙 Dark Theme UI
+1. Push this repository to GitHub.
+2. In Vercel, choose **Add New → Project** and import the GitHub repository. Keep the repository root as the project root.
+3. Add `MONGO_URI` and `JWT_SECRET` for Production and Preview. Add optional `GEMINI_API_KEY` only if AI assistance is wanted.
+4. In MongoDB Atlas, permit connections from Vercel and create separate databases/users for preview and production.
+5. Deploy. Vercel builds `frontend/dist` and exposes the Node function at `/api/*` automatically.
 
-## Environment Setup
+GitHub Actions runs tests, type checks, production build, and dependency audits on pull requests and `main`. Vercel Git integration creates previews from branches and production deployments from `main`.
 
-**Backend (.env):**
-```env
-MONGO_URI=mongodb://localhost:27017/hisabdar
-JWT_SECRET=your_secret_key
-PORT=3001
+## Validate a deployment
+
+```bash
+curl -i https://your-project.vercel.app/api/health
 ```
 
-**Frontend (.env.local):**
-```env
-VITE_API_URL=http://localhost:3001/api
+Expect `200 {"status":"ok"}` when Atlas is connected. Then create an account and add a customer. To test outage behavior, temporarily use an invalid API URL in a preview build: the application must show its data-load error panel and must not render demo records.
+
+## Checks
+
+```bash
+npm test --prefix backend
+npm exec --prefix frontend -- tsc --noEmit -p tsconfig.json
+npm run build --prefix frontend
 ```
-
-## Documentation
-
-See `MONGODB_SETUP.md` for detailed setup instructions.

@@ -72,7 +72,7 @@ import React, { useState } from 'react';
                  {/* Sync Indicator */}
                 <div className="flex items-center gap-2 text-xs text-emerald-500 bg-emerald-900/20 p-3 rounded-lg">
                     <CheckCircle2 size={14} />
-                    <span>Saved Locally</span>
+              <span>Securely synced</span>
                 </div>
 
                 <button 

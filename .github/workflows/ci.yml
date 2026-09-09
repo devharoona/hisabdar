@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+      - name: Install backend dependencies
+        run: npm ci --prefix backend
+      - name: Test backend
+        run: npm test --prefix backend
+      - name: Audit backend production dependencies
+        run: npm audit --prefix backend --omit=dev --audit-level=high
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend
+      - name: Type-check frontend
+        run: npm exec --prefix frontend -- tsc --noEmit -p tsconfig.json
+      - name: Build frontend
+        run: npm run build --prefix frontend
+      - name: Audit frontend production dependencies
+        run: npm audit --prefix frontend --omit=dev --audit-level=high

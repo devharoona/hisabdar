@@ -1,54 +1,21 @@
-import { GoogleGenAI } from "@google/genai";
+import { API_URL } from './apiConfig';
 
-const getClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    console.error("API Key is missing");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
-};
+async function generate(prompt: string): Promise<string> {
+  const token = localStorage.getItem('hisabdar_token');
+  if (!token) return 'Please sign in to use AI assistance.';
 
-export const generateReminderMessage = async (customerName: string, amount: number, dueDate: string, isOverdue: boolean): Promise<string> => {
-  const ai = getClient();
-  if (!ai) return "Error: API Key not found.";
+  const response = await fetch(`${API_URL}/ai/generate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ prompt })
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) return body.error || 'AI assistance is temporarily unavailable.';
+  return body.text || 'AI assistance returned an empty response.';
+}
 
-  const tone = isOverdue ? "firm but polite" : "friendly and helpful";
-  const prompt = `Write a short WhatsApp message (under 50 words) to a customer named ${customerName}. 
-  Remind them about an invoice of $${amount} due on ${dueDate}. 
-  The tone should be ${tone}. Do not include placeholders like [Your Name], just sign off as 'The Team'.`;
+export const generateReminderMessage = (customerName: string, amount: number, dueDate: string, isOverdue: boolean) =>
+  generate(`Write a short WhatsApp payment reminder (under 50 words) to ${customerName} for an invoice of Rs ${amount} due on ${dueDate}. Use a ${isOverdue ? 'firm but polite' : 'friendly and helpful'} tone. Do not include placeholders; sign off as The Team.`);
 
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "Could not generate message.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Could not generate message due to an error.";
-  }
-};
-
-export const analyzeFinancials = async (income: number, expenses: number, pending: number): Promise<string> => {
-  const ai = getClient();
-  if (!ai) return "Error: API Key not found.";
-
-  const prompt = `Acting as a financial advisor for a small business, give me a 2-sentence summary and 1 actionable tip based on these monthly stats:
-  - Total Income: $${income}
-  - Total Expenses: $${expenses}
-  - Pending Payments (Accounts Receivable): $${pending}
-  
-  Keep it encouraging and simple.`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-    return response.text || "No insights available.";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Could not generate insights.";
-  }
-};
+export const analyzeFinancials = (income: number, expenses: number, pending: number) =>
+  generate(`Give a two-sentence financial summary and one actionable tip for a small business. Income: Rs ${income}; expenses: Rs ${expenses}; pending receivables: Rs ${pending}. Keep it encouraging and simple.`);

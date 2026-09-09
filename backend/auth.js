@@ -1,21 +1,26 @@
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hisabdar_secret_key_change_in_production';
+function getJwtSecret() {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET must be set and at least 32 characters long');
+  }
+  return secret;
+}
 
 const authMiddleware = (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ error: 'No token provided' });
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication is required' });
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(authorization.slice(7), getJwtSecret(), { issuer: 'hisabdar', audience: 'hisabdar-web' });
     req.userId = decoded.userId;
     next();
-  } catch (err) {
-    return res.status(401).json({ error: 'Invalid token' });
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired token' });
   }
 };
 
-module.exports = { authMiddleware, JWT_SECRET };
+module.exports = { authMiddleware, getJwtSecret };

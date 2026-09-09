@@ -1,17 +1,22 @@
 import { AppData } from '../types';
 
 export const exportToCSV = (data: AppData) => {
+  const csvCell = (value: string | number) => {
+    const text = String(value);
+    const safeText = /^[=+\-@]/.test(text) ? `'${text}` : text;
+    return `"${safeText.replace(/"/g, '""')}"`;
+  };
   // Define headers
   const headers = ['Invoice ID', 'Customer', 'Date', 'Due Date', 'Total Amount', 'Status'];
   
   // Map data to rows
   const rows = data.invoices.map(inv => [
-    inv.id,
-    `"${inv.customerName}"`, // Quote to handle commas in names
-    inv.date,
-    inv.dueDate,
-    inv.totalAmount.toFixed(2),
-    inv.status
+    csvCell(inv.id),
+    csvCell(inv.customerName),
+    csvCell(inv.date),
+    csvCell(inv.dueDate),
+    csvCell(inv.totalAmount.toFixed(2)),
+    csvCell(inv.status)
   ]);
 
   // Combine headers and rows
@@ -29,6 +34,7 @@ export const exportToCSV = (data: AppData) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 export const backupData = (data: AppData) => {
@@ -41,4 +47,5 @@ export const backupData = (data: AppData) => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };

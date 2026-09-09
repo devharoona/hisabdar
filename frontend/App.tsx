@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Customers from './pages/Customers';
 import Invoices from './pages/Invoices';
 import Expenses from './pages/Expenses';
-import Reports from './pages/Reports';
 import Login from './pages/Login';
 import Settings from './pages/Settings';
 import { AppData, Customer, Invoice, Expense, PageView, InvoiceStatus, Payment } from './types';
-import { api } from './services/storage';
+import { ApiError, api } from './services/storage';
+
+const Reports = lazy(() => import('./pages/Reports'));
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<PageView>('dashboard');
@@ -16,6 +17,15 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [businessName, setBusinessName] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  const clearSession = useCallback(() => {
+    localStorage.removeItem('hisabdar_user');
+    localStorage.removeItem('hisabdar_token');
+    setIsAuthenticated(false);
+    setBusinessName('');
+    setCurrentPage('dashboard');
+  }, []);
 
   // Load initial data & auth status
   useEffect(() => {
@@ -27,18 +37,29 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Load data after authentication
   useEffect(() => {
-    if (isAuthenticated) {
-      const load = async () => {
-        setIsSyncing(true);
-        const loaded = await api.loadData();
-        setData(loaded);
-        setIsSyncing(false);
-      };
-      load();
+    window.addEventListener('hisabdar:unauthorized', clearSession);
+    return () => window.removeEventListener('hisabdar:unauthorized', clearSession);
+  }, [clearSession]);
+
+  // Load data after authentication
+  const loadData = useCallback(async () => {
+    setIsSyncing(true);
+    setLoadError('');
+    try {
+      setData(await api.loadData());
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) return;
+      setData({ customers: [], invoices: [], expenses: [], payments: [] });
+      setLoadError(error instanceof Error ? error.message : 'Unable to load your business data.');
+    } finally {
+      setIsSyncing(false);
     }
-  }, [isAuthenticated]);
+  }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) void loadData();
+  }, [isAuthenticated, loadData]);
 
   // Removed auto-save useEffect. Now we save imperatively via API.
 
@@ -52,11 +73,7 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('hisabdar_user');
-    localStorage.removeItem('hisabdar_token');
-    setIsAuthenticated(false);
-    setBusinessName('');
-    setCurrentPage('dashboard');
+    clearSession();
   };
 
   // --- Data Actions (Async) ---
@@ -170,22 +187,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Backup & Restore
-  const handleRestoreData = (newData: AppData) => {
-      if (window.confirm("This will overwrite all current local data. Are you sure?")) {
-          api.restoreData(newData);
-          setData(newData);
-          alert("Data restored successfully to local storage!");
-      }
-  };
-  
-  const handleResetData = () => {
-      if(window.confirm("Reset all data to demo state?")) {
-          api.resetData();
-          window.location.reload();
-      }
-  }
-
   // --- Router Render ---
 
   const renderPage = () => {
@@ -209,9 +210,9 @@ const App: React.FC = () => {
       case 'expenses':
         return <Expenses data={data} onAddExpense={addExpense} onEditExpense={editExpense} onDeleteExpense={deleteExpense} />;
       case 'reports':
-        return <Reports data={data} />;
+        return <Suspense fallback={<div className="p-6 text-stone-400">Loading reports…</div>}><Reports data={data} /></Suspense>;
       case 'settings':
-        return <Settings data={data} onRestore={handleRestoreData} onReset={handleResetData} />;
+        return <Settings data={data} />;
       default:
         return <Dashboard data={data} />;
     }
@@ -229,7 +230,13 @@ const App: React.FC = () => {
       businessName={businessName}
     >
       {isSyncing && <div className="fixed top-0 left-0 w-full h-1 bg-amber-500 animate-pulse z-50"></div>}
-      {renderPage()}
+      {loadError ? (
+        <div className="m-6 rounded-xl border border-rose-500/30 bg-rose-500/10 p-5 text-rose-100" role="alert">
+          <h2 className="font-semibold">Your data could not be loaded</h2>
+          <p className="mt-1 text-sm text-rose-200">{loadError}</p>
+          <button onClick={() => void loadData()} className="mt-4 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium hover:bg-rose-500">Try again</button>
+        </div>
+      ) : renderPage()}
     </Layout>
   );
 };
